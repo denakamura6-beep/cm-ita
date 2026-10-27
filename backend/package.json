@@ -1,0 +1,24 @@
+{
+  "name": "cm-ita-api",
+  "version": "1.0.0",
+  "description": "CM-ITA Information Technology Announcement System API with local AI (Ollama)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "hash": "node scripts/hash.js",
+    "admin": "node scripts/admin.js"
+  },
+  "engines": { "node": ">=20.19" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
