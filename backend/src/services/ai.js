@@ -1,7 +1,7 @@
 // The AI jobs of CM-ITA: AI Draft (admin) and the CM-ITA Assistant chat (students).
 // The AI detects the language by itself (English, Filipino/Tagalog, Bisaya/Cebuano or a mix).
 // Every prompt tells the model to use ONLY the facts it is given.
-const { chat } = require('./ollama');
+const { chat } = require('./openrouter'); 
 const { AppError } = require('../errors');
 
 const CATS = ['event', 'deadline', 'general'];
@@ -58,7 +58,11 @@ const TOMORROW_RE = /\b(tomorrow|tmrw|bukas|ugma)\b/i;
 
 // Backup guess of the category from the staff notes, used only when the AI says "general"
 function guessCategory(notes) {
-  if (/deadline|submit|submission|\bdue\b|pasa|ipasa|last day|until|hangtud|hangtod/i.test(notes))
+  if (
+    /deadline|submit|submission|\bdue\b|pasa|ipasa|last day|until|hangtud|hangtod/i.test(
+      notes,
+    )
+  )
     return 'deadline';
   if (
     /seminar|workshop|hackathon|contest|competition|program|event|week|intrams|celebration/i.test(
@@ -152,7 +156,10 @@ const STOP = new Set(
   ),
 );
 const CAT_HINTS = [
-  ['deadline', /deadline|submit|submission|due|pasa|ipasa|requirements?|capstone|thesis/i],
+  [
+    'deadline',
+    /deadline|submit|submission|due|pasa|ipasa|requirements?|capstone|thesis/i,
+  ],
   [
     'event',
     /event|seminar|workshop|hackathon|contest|competition|program|week|party|intrams|selebrasyon/i,

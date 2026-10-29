@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const config = require('./config');
 const db = require('./db');
-const ollama = require('./services/ollama');
+const ollama = require('./services/openrouter');
 
 if (config.jwtSecret.length < 16) {
   console.error('\nSet JWT_SECRET in backend/.env (at least 16 characters).\n');
@@ -37,21 +37,21 @@ app.use((err, req, res, next) => {
       .json({ error: 'That file is too large. Try a smaller picture or PDF.' });
   const status = err.status || 500;
   if (status >= 500) console.error(err);
-  res
-    .status(status)
-    .json({
-      error:
-        status >= 500 && !err.status
-          ? 'Something went wrong on the server.'
-          : err.message,
-    });
+  res.status(status).json({
+    error:
+      status >= 500 && !err.status
+        ? 'Something went wrong on the server.'
+        : err.message,
+  });
 });
 
 async function start() {
   try {
     await db.init();
     console.log('Database: PostgreSQL connected');
-    const n = (await db.query('SELECT COUNT(*)::int AS n FROM admins WHERE active')).rows[0].n;
+    const n = (
+      await db.query('SELECT COUNT(*)::int AS n FROM admins WHERE active')
+    ).rows[0].n;
     if (!n)
       console.warn(
         '\nNo admin accounts yet, so nobody can log in. Create one:\n  npm run admin -- add yourname "a-strong-password" "Your Full Name"\n',

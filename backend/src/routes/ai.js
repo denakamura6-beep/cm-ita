@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db = require('../db');
-const ollama = require('../services/ollama');
+const ollama = require('../services/openrouter');
 const ai = require('../services/ai');
 const { requireAdmin } = require('../middleware/auth');
 const rateLimit = require('../middleware/rateLimit');

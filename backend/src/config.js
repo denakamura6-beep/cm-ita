@@ -14,6 +14,17 @@ module.exports = {
   dbFile: process.env.DB_FILE || path.join(__dirname, "..", "data", "cmita.db"),
   uploadsDir,
   aiPerMinute: num(process.env.AI_RATE_PER_MIN, 10),
+  openrouter: {
+    apiKey: process.env.OPENROUTER_API_KEY || "",
+    models: (
+      process.env.OPENROUTER_MODELS ||
+      "google/gemma-4-26b-a4b-it:free,google/gemma-4-31b-it:free,thinkingmachines/inkling-small:free"
+    )
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    timeoutMs: num(process.env.OPENROUTER_TIMEOUT_MS, 25000),
+  },
   ollama: {
     host: (process.env.OLLAMA_HOST || "http://127.0.0.1:11434").replace(/\/$/, ""),
     model: process.env.OLLAMA_MODEL || "llama3.2:3b",
