@@ -18,7 +18,7 @@ const esc = (s) =>
         c
       ],
   );
-const token = () => sessionStorage.getItem('cmita_token');
+const token = () => localStorage.getItem('cmita_token');
 const fmtDate = (d) =>
   new Date(d + 'T00:00:00').toLocaleDateString('en-PH', {
     month: 'short',
@@ -104,8 +104,8 @@ async function api(path, { method = 'GET', body } = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && token() && path !== '/auth/login') {
-    sessionStorage.removeItem('cmita_token');
-    sessionStorage.removeItem('cmita_name');
+    localStorage.removeItem('cmita_token');
+    localStorage.removeItem('cmita_name');
     st.form = null;
     renderTools();
     renderForm();
@@ -280,7 +280,7 @@ function renderTools() {
   $('#tools').innerHTML =
     pill +
     (token()
-      ? `<span class="pill" title="Logged in">👤 ${esc(sessionStorage.getItem('cmita_name') || 'Admin')}</span><button class="btn" data-a="new">+ New post</button><button class="btn" data-a="logout">Log out</button>`
+      ? `<span class="pill" title="Logged in">👤 ${esc(localStorage.getItem('cmita_name') || 'Admin')}</span><button class="btn" data-a="new">+ New post</button><button class="btn" data-a="logout">Log out</button>`
       : `<button class="btn" data-a="login">Admin login</button>`);
 }
 function renderChips() {
@@ -514,8 +514,8 @@ document.addEventListener('click', async (e) => {
       st.form = { type: 'login' };
       renderForm();
     } else if (a === 'logout') {
-      sessionStorage.removeItem('cmita_token');
-      sessionStorage.removeItem('cmita_name');
+      localStorage.removeItem('cmita_token');
+      localStorage.removeItem('cmita_name');
       st.form = null;
       renderTools();
       renderForm();
@@ -678,8 +678,8 @@ document.addEventListener('submit', async (e) => {
         method: 'POST',
         body: { username: $('#lu').value.trim(), password: $('#lp').value },
       });
-      sessionStorage.setItem('cmita_token', r.token);
-      sessionStorage.setItem('cmita_name', r.name || '');
+      localStorage.setItem('cmita_token', r.token);
+      localStorage.setItem('cmita_name', r.name || '');
       st.form = null;
       renderTools();
       renderForm();
@@ -775,7 +775,14 @@ $('#search').addEventListener('input', (e) => {
     load();
   }, 250);
 });
-
+// Keep every tab of the same browser in sync: log in or out in one tab and the others follow
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'cmita_token') return;
+  st.form = null;
+  renderTools();
+  renderForm();
+  load();
+});
 /* ---------- theme colors taken from the logo ---------- */
 // Reads public/logo.png, finds its main color (and a second one for deadlines),
 // and sets the site colors. If anything fails, the green theme in styles.css stays.
