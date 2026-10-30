@@ -66,8 +66,13 @@ async function init() {
   `);
   // One-time move: if there are no accounts yet, copy the old .env admin into the database
   // so nobody is locked out. After that, the .env login values are no longer used.
-  const adminCount = (await pool.query('SELECT COUNT(*)::int AS n FROM admins')).rows[0].n;
-  if (adminCount === 0 && config.adminHash && !config.adminHash.startsWith('paste')) {
+  const adminCount = (await pool.query('SELECT COUNT(*)::int AS n FROM admins'))
+    .rows[0].n;
+  if (
+    adminCount === 0 &&
+    config.adminHash &&
+    !config.adminHash.startsWith('paste')
+  ) {
     const a = (
       await pool.query(
         `INSERT INTO admins (username, full_name, password_hash) VALUES ($1, 'Administrator', $2) RETURNING id`,
@@ -78,7 +83,9 @@ async function init() {
       `UPDATE announcements SET posted_by = $1, posted_by_name = 'Administrator' WHERE posted_by IS NULL`,
       [a.id],
     );
-    console.log(`Admin account "${config.adminUser}" was copied from .env into the database.`);
+    console.log(
+      `Admin account "${config.adminUser}" was copied from .env into the database.`,
+    );
   }
 
   // One table that shows every announcement together with the person who posted it.
@@ -108,7 +115,7 @@ async function init() {
   const { rows } = await pool.query(
     'SELECT COUNT(*)::int AS n FROM announcements',
   );
-  if (rows[0].n === 0) {
+  if (process.env.SEED_SAMPLES === 'true' && rows[0].n === 0) {
     const samples = [
       [
         'general',
@@ -144,4 +151,8 @@ async function init() {
   }
 }
 
-module.exports = { pool, query: (text, params) => pool.query(text, params), init };
+module.exports = {
+  pool,
+  query: (text, params) => pool.query(text, params),
+  init,
+};
