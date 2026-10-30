@@ -66,6 +66,24 @@ const st = {
 };
 const aiReady = () => st.ai.online && st.ai.modelReady;
 
+/* ---------- styles for the "sensitive words" popup ---------- */
+const swStyle = document.createElement('style');
+swStyle.textContent = `
+mark.flagged{background:#fecaca;color:#7f1d1d;padding:0 3px;border-radius:4px;font-weight:700}
+.sw-back{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.sw-box{background:#fff;color:#1b1f1d;border-radius:14px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:20px;border-top:5px solid var(--brand,#0b7a3b);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.sw-box h2{margin:0 0 6px;font-size:20px}
+.sw-box p{margin:0 0 14px;font-size:15px}
+.sw-row{margin:0 0 12px}
+.sw-row b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#5b6660;margin-bottom:4px}
+.sw-text{background:#f4f6f5;border:1px solid #dfe5e2;border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font-size:14px}
+.sw-tags{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.sw-tags li{font-size:13px;background:#fff5f5;border:1px solid #fecaca;border-radius:999px;padding:3px 10px}
+.sw-tags li span{color:#7f1d1d;opacity:.8}
+.sw-box .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+`;
+document.head.append(swStyle);
+
 /* ---------- talking to the backend ---------- */
 async function api(path, { method = 'GET', body } = {}) {
   const headers = {};
@@ -90,7 +108,12 @@ async function api(path, { method = 'GET', body } = {}) {
     renderForm();
     renderList();
   }
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || data.message || `Error ${res.status}`);
+    err.status = res.status; // lets the form notice a "please confirm" answer (409)
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 const showError = (m) => {
@@ -146,6 +169,97 @@ function shrink(file, max = 1280) {
   });
 }
 
+/* ---------- sensitive words: highlight + "do you wish to proceed?" ---------- */
+const SW_CAT = {
+  sexual: 'Sexual content',
+  crime: 'Crime or violence',
+  bullying: 'Bullying or insults',
+  profanity: 'Bad language',
+};
+
+// Escapes the text and wraps the flagged words in <mark>
+function highlight(text, words) {
+  const src = String(text ?? '');
+  const low = src.toLowerCase();
+  const ranges = [];
+  for (const w of words) {
+    const needle = String(w).toLowerCase();
+    if (!needle) continue;
+    let from = 0,
+      at;
+    while ((at = low.indexOf(needle, from)) !== -1) {
+      ranges.push([at, at + needle.length]);
+      from = at + needle.length;
+    }
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+    else merged.push([r[0], r[1]]);
+  }
+  let out = '',
+    pos = 0;
+  for (const [s, e] of merged) {
+    out +=
+      esc(src.slice(pos, s)) +
+      `<mark class="flagged">${esc(src.slice(s, e))}</mark>`;
+    pos = e;
+  }
+  return out + esc(src.slice(pos));
+}
+
+// Shows the popup. Resolves true for "Post anyway", false for "Edit".
+function askSensitive(fields, flagged) {
+  return new Promise((resolve) => {
+    const LABELS = [
+      ['title', 'Title'],
+      ['body', 'Details'],
+      ['location', 'Where'],
+      ['event_time', 'Time'],
+    ];
+    const rows = LABELS.map(([k, label]) => {
+      const words = flagged.filter((f) => f.field === k).map((f) => f.word);
+      if (!words.length) return '';
+      return `<div class="sw-row"><b>${label}</b><div class="sw-text">${highlight(fields[k], words)}</div></div>`;
+    }).join('');
+    const tags = [
+      ...new Map(
+        flagged.map((f) => [f.word.toLowerCase() + f.category, f]),
+      ).values(),
+    ]
+      .map(
+        (f) =>
+          `<li><mark class="flagged">${esc(f.word)}</mark> <span>${esc(SW_CAT[f.category] || 'Sensitive')}</span></li>`,
+      )
+      .join('');
+    const box = document.createElement('div');
+    box.className = 'sw-back';
+    box.innerHTML = `<div class="sw-box" role="dialog" aria-modal="true" aria-labelledby="sw-h">
+      <h2 id="sw-h">⚠️ Sensitive words found</h2>
+      <p>This contains sensitive words. Do you wish to proceed?</p>
+      ${rows}<ul class="sw-tags">${tags}</ul>
+      <div class="acts"><button type="button" class="btn" data-sw="edit">Edit</button><button type="button" class="btn p" data-sw="go">Post anyway</button></div></div>`;
+    const done = (v) => {
+      document.removeEventListener('keydown', onKey);
+      box.remove();
+      resolve(v);
+    };
+    const onKey = (ev) => {
+      if (ev.key === 'Escape') done(false);
+    };
+    box.addEventListener('click', (ev) => {
+      if (ev.target === box) return done(false); // click outside = Edit
+      const act = ev.target.closest('[data-sw]')?.dataset.sw;
+      if (act) done(act === 'go');
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.append(box);
+    box.querySelector('[data-sw="edit"]').focus();
+  });
+}
+
 /* ---------- drawing the page ---------- */
 function renderTools() {
   const pill = aiReady()
@@ -173,7 +287,9 @@ function card(i, feat) {
   const title = i.title,
     body = i.body;
   const dp = i.event_date ? dparts(i.event_date) : null;
-  const [dlText, dlOver] = i.deadline_date ? dlStatus(i.deadline_date) : ['', false];
+  const [dlText, dlOver] = i.deadline_date
+    ? dlStatus(i.deadline_date)
+    : ['', false];
   const dl = i.deadline_date
     ? `<div class="dl${dlOver ? ' over' : ''}">⏰ Deadline: ${fmtDate(i.deadline_date)}${i.event_time && i.category === 'deadline' ? ' · ' + esc(i.event_time) : ''}<em>${dlText}</em></div>`
     : '';
@@ -349,9 +465,10 @@ document.addEventListener('click', async (e) => {
       }
     } else if (a === 'pin') {
       const it = itemById(id);
+      // The text is not changed by pinning, so skip the sensitive-word check here.
       await api('/announcements/' + id, {
         method: 'PUT',
-        body: { ...it, pinned: !it.pinned },
+        body: { ...it, pinned: !it.pinned, confirmSensitive: true },
       });
       await load();
     } else if (a === 'draft') await draft(b);
@@ -499,14 +616,41 @@ document.addEventListener('submit', async (e) => {
         remove_image: !!st.form.rm,
       };
       const it = st.form.item;
-      await api(it ? '/announcements/' + it.id : '/announcements', {
-        method: it ? 'PUT' : 'POST',
-        body,
-      });
-      st.form = null;
-      renderForm();
-      showError('');
-      await load();
+      const url = it ? '/announcements/' + it.id : '/announcements';
+      const method = it ? 'PUT' : 'POST';
+
+      // Stop double clicks while the server checks the text
+      const sbtn = e.target.querySelector('.acts .btn.p');
+      const sLabel = sbtn ? sbtn.textContent : '';
+      const setBusy = (on) => {
+        if (sbtn && sbtn.isConnected) {
+          sbtn.disabled = on;
+          sbtn.textContent = on ? 'Checking…' : sLabel;
+        }
+      };
+      setBusy(true);
+      try {
+        try {
+          await api(url, { method, body });
+        } catch (err) {
+          if (err.status === 409 && err.data?.needsConfirmation) {
+            setBusy(false);
+            const proceed = await askSensitive(body, err.data.flagged || []);
+            if (!proceed) return; // admin chose "Edit": keep the form as it is
+            setBusy(true);
+            await api(url, {
+              method,
+              body: { ...body, confirmSensitive: true },
+            });
+          } else throw err;
+        }
+        st.form = null;
+        renderForm();
+        showError('');
+        await load();
+      } finally {
+        setBusy(false);
+      }
     } else if (kind === 'ask') {
       const q = $('#askq').value.trim();
       if (!q || st.busy) return;
@@ -560,20 +704,33 @@ function themeFromLogo() {
       const bins = Array.from({ length: 24 }, () => 0);
       for (let i = 0; i < px.length; i += 4) {
         if (px[i + 3] < 200) continue;
-        const r = px[i] / 255, gr = px[i + 1] / 255, b = px[i + 2] / 255;
-        const mx = Math.max(r, gr, b), mn = Math.min(r, gr, b), l = (mx + mn) / 2;
+        const r = px[i] / 255,
+          gr = px[i + 1] / 255,
+          b = px[i + 2] / 255;
+        const mx = Math.max(r, gr, b),
+          mn = Math.min(r, gr, b),
+          l = (mx + mn) / 2;
         const sat = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1));
         if (sat < 0.35 || l < 0.12 || l > 0.8) continue; // skip grays, black, white
         const d = mx - mn;
-        let h = mx === r ? ((gr - b) / d) % 6 : mx === gr ? (b - r) / d + 2 : (r - gr) / d + 4;
+        let h =
+          mx === r
+            ? ((gr - b) / d) % 6
+            : mx === gr
+              ? (b - r) / d + 2
+              : (r - gr) / d + 4;
         h = (h * 60 + 360) % 360;
         bins[Math.floor(h / 15) % 24] += sat;
       }
-      const order = bins.map((w, k) => [w, k * 15 + 7]).sort((a, b) => b[0] - a[0]);
+      const order = bins
+        .map((w, k) => [w, k * 15 + 7])
+        .sort((a, b) => b[0] - a[0]);
       if (!order[0][0]) return;
       const hue = order[0][1];
       const dist = (a, b) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
-      const second = order.find(([w, h]) => w > order[0][0] * 0.1 && dist(h, hue) > 40);
+      const second = order.find(
+        ([w, h]) => w > order[0][0] * 0.1 && dist(h, hue) > 40,
+      );
       const root = document.documentElement.style;
       root.setProperty('--brand', `hsl(${hue} 80% 27%)`);
       root.setProperty('--brand2', `hsl(${hue} 85% 18%)`);
@@ -588,7 +745,9 @@ function themeFromLogo() {
         m.name = 'theme-color';
         document.head.append(m);
       }
-      m.content = getComputedStyle(document.documentElement).getPropertyValue('--blk');
+      m.content = getComputedStyle(document.documentElement).getPropertyValue(
+        '--blk',
+      );
     } catch {
       /* keep the default theme */
     }

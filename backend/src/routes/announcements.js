@@ -6,6 +6,7 @@ const db = require('../db');
 const { uploadsDir } = require('../config');
 const { requireAdmin } = require('../middleware/auth');
 const { AppError, wrap } = require('../errors');
+const { checkSensitive } = require('../services/ai'); // change the path if your ai.js lives elsewhere
 
 const CATS = ['event', 'deadline', 'general'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,7 +32,10 @@ function clean(b = {}) {
       if (!/^https?:$/.test(u.protocol)) throw new Error();
       link = u.href;
     } catch {
-      throw new AppError(400, 'That link does not look right. Example: https://example.com');
+      throw new AppError(
+        400,
+        'That link does not look right. Example: https://example.com',
+      );
     }
   }
   return {
@@ -50,6 +54,27 @@ function getId(req) {
   const id = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(id)) throw new AppError(400, 'Bad id.');
   return id;
+}
+
+// Sensitive word check. Returns true when it already answered with a "please confirm" (409).
+// It runs BEFORE any picture or PDF is saved, so nothing is left behind if the admin cancels.
+// When the admin chose "Post anyway", the frontend sends confirmSensitive: true and we skip the check.
+async function needsConfirmation(req, res, d) {
+  if (req.body && req.body.confirmSensitive === true) return false;
+  const flagged = await checkSensitive({
+    title: d.title,
+    body: d.body,
+    location: d.location,
+    event_time: d.event_time,
+  });
+  if (!flagged.length) return false;
+  res.status(409).json({
+    needsConfirmation: true,
+    message:
+      'This announcement contains sensitive words. Do you wish to proceed?',
+    flagged,
+  });
+  return true;
 }
 
 // Pictures arrive as a data URL (the browser shrinks them first) and are saved as files.
@@ -105,7 +130,10 @@ function resolvePdf(b, old = { attachment: '', attachment_name: '' }) {
       .replace(/[^\w.\- ()]/g, '')
       .trim()
       .slice(0, 100);
-    return { attachment: savePdf(b.pdf), attachment_name: name || 'document.pdf' };
+    return {
+      attachment: savePdf(b.pdf),
+      attachment_name: name || 'document.pdf',
+    };
   }
   if (b.remove_pdf) {
     removeImage(old.attachment);
@@ -144,6 +172,7 @@ router.post(
   requireAdmin,
   wrap(async (req, res) => {
     const d = clean(req.body);
+    if (await needsConfirmation(req, res, d)) return; // asks the admin to confirm first
     d.image = resolveImage(req.body || {});
     const pdf = resolvePdf(req.body || {});
     const { rows } = await db.query(
@@ -183,6 +212,7 @@ router.put(
     ).rows[0];
     if (!old) throw new AppError(404, 'Announcement not found.');
     const d = clean(req.body);
+    if (await needsConfirmation(req, res, d)) return; // asks the admin to confirm first
     d.image = resolveImage(req.body || {}, old.image);
     const pdf = resolvePdf(req.body || {}, {
       attachment: old.attachment,
