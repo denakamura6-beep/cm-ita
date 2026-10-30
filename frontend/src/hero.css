@@ -1,0 +1,464 @@
+/* =====================================================
+   CM-ITA modern look + headline carousel
+   Loaded after styles.css, so it overrides the old hero.
+   ===================================================== */
+
+body {
+  background:
+    radial-gradient(
+      900px 520px at 100% -8%,
+      color-mix(in srgb, var(--brand) 9%, transparent),
+      transparent 65%
+    ),
+    var(--bg);
+}
+
+/* header: soft glass */
+.top {
+  background: color-mix(in srgb, var(--blk) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, #fff 10%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* hero */
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  padding: 48px 0 58px;
+  background:
+    radial-gradient(
+      700px 380px at 88% 0%,
+      color-mix(in srgb, var(--brand) 55%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      520px 320px at 0% 100%,
+      color-mix(in srgb, var(--accent) 26%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(135deg, var(--blk) 0%, var(--brand2) 130%);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 40px;
+  align-items: center;
+}
+.hero-copy {
+  min-width: 0;
+}
+.kicker {
+  display: inline-flex;
+  margin: 0 0 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--brand) 40%, #fff);
+  background: color-mix(in srgb, #fff 8%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 16%, transparent);
+  font: 700 11px var(--hd);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.hero h1 span {
+  opacity: 1;
+  color: transparent;
+  background: linear-gradient(90deg, #fff, color-mix(in srgb, var(--brand) 35%, #fff));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.lead {
+  color: #d6ddd8;
+}
+#search {
+  width: 100%;
+  max-width: 440px;
+  background: color-mix(in srgb, #fff 8%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+#search::placeholder {
+  color: #aeb9b2;
+}
+#search:focus {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--brand) 40%, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+/* headline carousel */
+.spot {
+  position: relative;
+  min-width: 0;
+}
+.spot-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font: 700 12px var(--hd);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.spot-label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  animation: spotPulse 2s infinite;
+}
+.spot-count {
+  margin-left: auto;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  color: #cfd8d2;
+}
+.spot-frame {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--blk);
+  box-shadow:
+    0 24px 60px -18px #000a,
+    0 0 0 1px color-mix(in srgb, #fff 14%, transparent);
+}
+.spot-viewport {
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.spot-track {
+  display: flex;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.spot-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  position: relative;
+  min-height: 320px;
+  display: flex;
+  align-items: flex-end;
+  padding: 28px 64px 46px;
+  color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 72%, #000), var(--blk));
+}
+.spot-slide.deadline {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 78%, #000), var(--blk));
+}
+.spot-slide .bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.spot-slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #0000 15%, #000b 100%);
+}
+.spot-ico {
+  position: absolute;
+  z-index: 1;
+  right: 64px;
+  top: 22px;
+  font-size: 84px;
+  opacity: 0.2;
+  pointer-events: none;
+}
+.spot-body {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+.spot-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+}
+.spot-badge {
+  background: #fff;
+  color: var(--blk);
+  font: 700 11px var(--hd);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 999px;
+}
+.spot-pin {
+  background: #fbbf24;
+  color: #2a1c00;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.spot-title {
+  margin: 0 0 8px;
+  font: 700 clamp(22px, 3.2vw, 32px) / 1.15 var(--hd);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.spot-text {
+  margin: 0 0 14px;
+  color: #e8ece9;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.spot-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.spot-chip {
+  background: color-mix(in srgb, #fff 14%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.spot-chip.warn {
+  background: #fbbf24;
+  border-color: transparent;
+  color: #2a1c00;
+}
+.spot-cta {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-weight: 700;
+  color: var(--blk);
+  background: #fff;
+  transition: 0.15s;
+}
+.spot-cta:hover {
+  transform: translateX(3px);
+  box-shadow: 0 8px 20px -8px #000a;
+}
+
+/* arrows */
+.spot-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, #fff 28%, transparent);
+  background: color-mix(in srgb, #000 38%, transparent);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  padding: 0 0 3px;
+  display: grid;
+  place-items: center;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: 0.15s;
+}
+.spot-arrow:hover {
+  background: #fff;
+  color: var(--blk);
+}
+.spot-arrow.prev {
+  left: 10px;
+}
+.spot-arrow.next {
+  right: 10px;
+}
+
+/* position bars (each one fills up like a timer) */
+.spot-bars {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+.spot-bars button {
+  flex: 1;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: flex;
+  align-items: center;
+}
+.spot-bars span {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: color-mix(in srgb, #fff 30%, transparent);
+}
+.spot-bars i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #fbbf24;
+}
+.spot-bars .done i {
+  width: 100%;
+}
+.spot-bars .on i {
+  animation: spotfill 7s linear forwards;
+}
+.spot.paused .spot-bars .on i {
+  animation-play-state: paused;
+}
+
+/* loading placeholder */
+.spot-skel {
+  height: 340px;
+  border-radius: 22px;
+  background:
+    linear-gradient(100deg, #ffffff0d 30%, #ffffff1f 50%, #ffffff0d 70%) 0 0 / 200% 100%,
+    #ffffff0a;
+  animation: spotShimmer 1.4s linear infinite;
+}
+
+@keyframes spotfill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+@keyframes spotPulse {
+  0% {
+    box-shadow: 0 0 0 0 #fbbf2488;
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 9px #fbbf2400;
+  }
+}
+@keyframes spotShimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* modern touches for the rest of the page */
+.chip {
+  box-shadow: 0 1px 2px #0000000d;
+}
+.chip:hover {
+  transform: translateY(-1px);
+}
+.chip.on,
+.btn.p {
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #14b8a6));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 16px -8px var(--brand);
+}
+.btn.p:hover {
+  background: linear-gradient(135deg, var(--brand2), var(--brand));
+}
+.card {
+  border-radius: 20px;
+  border-color: color-mix(in srgb, var(--brand) 9%, var(--bd));
+  box-shadow:
+    0 1px 2px #0000000a,
+    0 10px 28px -16px #00000033;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 44px -18px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.ph {
+  font-size: 48px;
+  background:
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--brand) 55%, transparent), transparent 55%),
+    linear-gradient(135deg, var(--blk), color-mix(in srgb, var(--brand2) 85%, #000));
+}
+.badge {
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.panel {
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -18px #00000040;
+}
+.foot {
+  background: linear-gradient(135deg, var(--blk), var(--brand2));
+}
+#chat .fab {
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #14b8a6));
+}
+
+/* tablets and phones */
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+  .hero {
+    padding: 34px 0 40px;
+  }
+}
+@media (max-width: 560px) {
+  .spot-slide {
+    padding: 22px 52px 44px;
+    min-height: 300px;
+  }
+  .spot-ico {
+    right: 52px;
+    font-size: 64px;
+  }
+  .spot-arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+  .spot-arrow.prev {
+    left: 8px;
+  }
+  .spot-arrow.next {
+    right: 8px;
+  }
+  .spot-bars {
+    left: 52px;
+    right: 52px;
+  }
+}
+
+/* people who turn animations off */
+@media (prefers-reduced-motion: reduce) {
+  .spot-track {
+    transition: none;
+  }
+  .spot-bars .on i {
+    animation: none;
+    width: 100%;
+  }
+  .spot-label i,
+  .spot-skel {
+    animation: none;
+  }
+}

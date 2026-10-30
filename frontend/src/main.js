@@ -1,4 +1,5 @@
 import './styles.css';
+import { initHero, updateHero } from './hero.js';
 
 const API = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const FILES = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, ''); // where pictures are served from
@@ -125,8 +126,13 @@ async function load() {
   if (st.cat) p.set('category', st.cat);
   if (st.q) p.set('q', st.q);
   try {
-    st.items = await api('/announcements?' + p);
-    showError('');
+      st.items = await api('/announcements?' + p);
+      showError('');
+      if (!st.cat && !st.q) updateHero(st.items);
+      else
+        api('/announcements')
+          .then(updateHero)
+          .catch(() => {});
   } catch (e) {
     showError(e.message);
   }
@@ -319,7 +325,7 @@ function card(i, feat) {
     ${admin}</div></article>`;
 }
 function renderList() {
-  const feat = st.items.length > 1 && st.items[0].pinned && !st.cat && !st.q;
+  const feat = false; // the pinned headline now lives in the hero carousel
   $('#list').innerHTML = st.items.length
     ? st.items.map((i, n) => card(i, feat && n === 0)).join('')
     : `<div class="empty">No announcements found.</div>`;
@@ -755,6 +761,7 @@ function themeFromLogo() {
   im.src = '/logo.png';
 }
 
+initHero({ esc, fmtDate, dlStatus, CATS, FILES });
 themeFromLogo();
 renderTools();
 renderChips();
