@@ -66,7 +66,9 @@ const st = {
   busy: false,
 };
 const aiReady = () => st.ai.online && st.ai.modelReady;
-
+// every announcement we have seen, so the detail window can open any of them
+const known = new Map();
+const remember = (i) => known.set(i.id, i);
 /* ---------- styles for the "sensitive words" popup ---------- */
 const swStyle = document.createElement('style');
 swStyle.textContent = `
@@ -126,13 +128,17 @@ async function load() {
   if (st.cat) p.set('category', st.cat);
   if (st.q) p.set('q', st.q);
   try {
-      st.items = await api('/announcements?' + p);
-      showError('');
-      if (!st.cat && !st.q) updateHero(st.items);
-      else
-        api('/announcements')
-          .then(updateHero)
-          .catch(() => {});
+    st.items = await api('/announcements?' + p);
+    showError('');
+    st.items.forEach(remember);
+    if (!st.cat && !st.q) updateHero(st.items);
+    else
+      api('/announcements')
+        .then((all) => {
+          all.forEach(remember);
+          updateHero(all);
+        })
+        .catch(() => {});
   } catch (e) {
     showError(e.message);
   }
@@ -319,10 +325,10 @@ function card(i, feat) {
   const admin = token()
     ? `<div class="acts"><button class="btn s" data-a="edit" data-id="${i.id}">Edit</button><button class="btn s" data-a="pin" data-id="${i.id}">${i.pinned ? 'Unpin' : 'Pin'}</button><button class="btn s d" data-a="del" data-id="${i.id}">Delete</button></div>`
     : '';
-  return `<article class="card${feat ? ' feat' : ''}" id="a-${i.id}">
+  return `<article class="card${feat ? ' feat' : ''}" id="a-${i.id}" tabindex="0" aria-label="Open details: ${esc(i.title)}">
     <div class="media">${media}<span class="badge ${i.category}">${catName}</span>${i.pinned ? `<span class="pin">📌 Pinned</span>` : ''}${dp ? `<div class="date">${dp[0]}<small>${dp[1]}</small></div>` : ''}</div>
     <div class="cb"><h3>${esc(title)}</h3><div class="posted">🗓️ Posted ${fmtPosted(i.created_at)}</div>${dl}${body ? `<p>${esc(body)}</p>` : ''}${atts}<div class="meta">${meta}</div>
-    ${admin}</div></article>`;
+        <div class="more">View details →</div>${admin}</div></article>`;
 }
 function renderList() {
   const feat = false; // the pinned headline now lives in the hero carousel
@@ -417,7 +423,81 @@ function renderChat() {
   log.scrollTop = log.scrollHeight;
   if (!st.busy) $('#askq').focus();
 }
-
+/* ---------- announcement detail window ---------- */
+let dtPrev = null;
+const dtKey = (e) => {
+  if (e.key === 'Escape') closeDetail();
+};
+function closeDetail() {
+  const el = document.getElementById('dt');
+  if (!el) return;
+  el.remove();
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', dtKey);
+  dtPrev?.focus?.();
+  dtPrev = null;
+}
+function openDetail(id) {
+  const i = known.get(Number(id));
+  if (!i) return;
+  closeDetail();
+  dtPrev = document.activeElement;
+  const [catName, ico] = CATS[i.category] || CATS.general;
+  const hasDl = i.deadline_date && i.category === 'deadline';
+  const [dlText, dlOver] = i.deadline_date
+    ? dlStatus(i.deadline_date)
+    : ['', false];
+  const dl = i.deadline_date
+    ? `<div class="dl${dlOver ? ' over' : ''}">⏰ Deadline: ${fmtDate(i.deadline_date)}${i.event_time && hasDl ? ' · ' + esc(i.event_time) : ''}<em>${dlText}</em></div>`
+    : '';
+  const info = [
+    i.location && ['📍', 'Where', i.location],
+    i.event_date && ['📅', 'Date', fmtDate(i.event_date)],
+    i.event_time && !hasDl && ['🕐', 'Time', i.event_time],
+  ]
+    .filter(Boolean)
+    .map(([ic, l, v]) => `<div><span>${ic} ${l}</span><b>${esc(v)}</b></div>`)
+    .join('');
+  const atts =
+    i.link || i.attachment
+      ? `<div class="atts">${i.link ? `<a class="att" href="${esc(i.link)}" target="_blank" rel="noopener noreferrer">🔗 Open link</a>` : ''}${i.attachment ? `<a class="att" href="${esc(FILES + i.attachment)}" target="_blank" rel="noopener noreferrer">📄 ${esc(i.attachment_name || 'View PDF')}</a>` : ''}</div>`
+      : '';
+  const img = i.image
+    ? `<a class="dt-img" href="${esc(FILES + i.image)}" target="_blank" rel="noopener noreferrer" title="Open full size"><img src="${esc(FILES + i.image)}" alt="" onerror="this.closest('.dt-media').classList.remove('has-img');this.remove()"></a>`
+    : '';
+  const box = document.createElement('div');
+  box.className = 'dt-back';
+  box.id = 'dt';
+  box.innerHTML = `<div class="dt-box" role="dialog" aria-modal="true" aria-labelledby="dt-h">
+    <button type="button" class="dt-x" data-dt="close" aria-label="Close">✕</button>
+    <div class="dt-media${i.image ? ' has-img' : ''}">${img}<div class="dt-ph">${ico}</div>
+      <span class="badge ${esc(i.category)}">${esc(catName)}</span>${i.pinned ? '<span class="pin">📌 Pinned</span>' : ''}</div>
+    <div class="dt-main">
+      <h2 id="dt-h">${esc(i.title)}</h2>
+      <div class="dt-posted">🗓️ Posted ${fmtPosted(i.created_at)}</div>
+      ${dl}${info ? `<div class="dt-info">${info}</div>` : ''}
+      ${i.body ? `<div class="dt-body">${esc(i.body)}</div>` : ''}${atts}
+    </div></div>`;
+  box.addEventListener('click', (ev) => {
+    if (ev.target === box || ev.target.closest('[data-dt="close"]'))
+      closeDetail();
+  });
+  document.addEventListener('keydown', dtKey);
+  document.body.append(box);
+  document.body.style.overflow = 'hidden';
+  box.querySelector('.dt-x').focus();
+}
+// click a card (but not its buttons or links) to open it
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('article.card');
+  if (!c || e.target.closest('a, button, input, select, textarea, label'))
+    return;
+  openDetail(c.id.slice(2));
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('article.card'))
+    openDetail(e.target.id.slice(2));
+});
 /* ---------- clicks ---------- */
 const itemById = (id) => st.items.find((x) => x.id === Number(id));
 
@@ -478,6 +558,7 @@ document.addEventListener('click', async (e) => {
       });
       await load();
     } else if (a === 'draft') await draft(b);
+    else if (a === 'open') openDetail(id);
     else if (a === 'chat') {
       st.chatOpen = true;
       renderChat();

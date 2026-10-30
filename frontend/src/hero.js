@@ -132,7 +132,7 @@ function slideHtml(i) {
       <h2 class="spot-title">${esc(i.title)}</h2>
       ${i.body ? `<p class="spot-text">${esc(i.body)}</p>` : ''}
       ${chips.length ? `<div class="spot-chips">${chips.join('')}</div>` : ''}
-      <button type="button" class="spot-cta" data-a="goto" data-id="${i.id}">View details →</button>
+      <button type="button" class="spot-cta" data-a="open" data-id="${i.id}">View details →</button>
     </div>
   </article>`;
 }
